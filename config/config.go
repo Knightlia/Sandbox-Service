@@ -18,6 +18,7 @@ func NewConfig() Config {
 	return Config{}
 }
 
+// InitFlags initialise CLI flags.
 func (_ Config) InitFlags() {
 	pflag.Uint("port", 8080, "The port to run the server on. Default is 8080.")
 	pflag.String("config", ".", "The directory where the config.yaml exists. Defaults to current working directory.")
@@ -27,6 +28,7 @@ func (_ Config) InitFlags() {
 	_ = viper.BindPFlags(pflag.CommandLine)
 }
 
+// InitLogger initialises the rolling file logger and the logging format.
 func (_ Config) InitLogger() {
 	writers := io.MultiWriter(
 		zerolog.ConsoleWriter{Out: os.Stdout},
@@ -60,6 +62,7 @@ func (_ Config) InitLogger() {
 	log.Info().Msg("Logger initialised.")
 }
 
+// InitConfigFile loads an external configuration file and registers it into [viper].
 func (_ Config) InitConfigFile() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
