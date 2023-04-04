@@ -35,8 +35,10 @@ func (a App) InitEcho() {
 
 func (a App) InitRoutes() {
 	healthHandler := handlers.NewHealthHandler()
+    websocketHandler := handlers.NewWebSocketHandler()
 
 	a.Echo.GET("/", healthHandler.Version)
+	a.Echo.GET("/stream", websocketHandler.Connect)
 }
 
 func (a App) EnableMetrics() {
