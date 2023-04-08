@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"sandbox-service/app"
+	"sandbox-service/cache"
 	"sandbox-service/config"
 )
 
@@ -15,12 +17,13 @@ func main() {
 	c.InitLogger()
 	c.InitConfigFile()
 
+	cache.InitCaches()
+
 	a := app.NewApp()
-	a.InitEcho()
+	a.InitApp()
 	a.InitRoutes()
-	a.EnableMetrics()
 
 	log.Fatal().
-		Err(a.Echo.Start(fmt.Sprintf(":%d", viper.GetUint("port")))).
+		Err(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetUint("port")), a.Chi)).
 		Msg("Failed to start server.")
 }
