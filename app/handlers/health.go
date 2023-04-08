@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"sandbox-service/app/model"
 )
 
 const version = "0.0.1"
@@ -14,6 +14,6 @@ func NewHealthHandler() HealthHandler {
 	return HealthHandler{}
 }
 
-func (_ HealthHandler) Version(c echo.Context) error {
-	return c.String(http.StatusOK, version)
+func (_ HealthHandler) Version(c model.Context) {
+	c.PlainString(http.StatusOK, version)
 }

@@ -11,10 +11,8 @@ func TestHealthVersion(t *testing.T) {
 	s := SetupTests()
 	defer s.Close()
 
-	res, err := http.Get(s.URL)
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, res.StatusCode)
-	}
+	res := GET(s, "/")
+	assert.Equal(t, http.StatusOK, res.StatusCode)
 
 	_ = res.Body.Close()
 }
