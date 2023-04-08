@@ -1,47 +1,65 @@
 package app
 
 import (
-	"github.com/labstack/echo-contrib/prometheus"
-	"github.com/spf13/viper"
-	"sandbox-service/app/handlers"
+	"net/http"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"sandbox-service/app/handlers"
+	m "sandbox-service/app/middleware"
+	"sandbox-service/app/model"
+	"sandbox-service/app/repository"
+	"sandbox-service/cache"
+)
+
+var (
+	WebSocketRepository repository.WebSocketRepository
+	SessionRepository   repository.SessionRepository
+	UserRepository      repository.UserRepository
 )
 
 type App struct {
-	Echo *echo.Echo
+	Chi        *chi.Mux
+	middleware m.Middleware
 }
 
 func NewApp() App {
-	return App{Echo: echo.New()}
+	// Initialise repositories
+	SessionRepository = repository.NewSessionRepository(cache.SessionCache)
+	UserRepository = repository.NewUserRepository(cache.UserCache)
+	WebSocketRepository = repository.NewWebSocketRepository(SessionRepository)
+
+	return App{Chi: chi.NewRouter(), middleware: m.NewMiddleware(SessionRepository)}
 }
 
-func (a App) InitEcho() {
-	if viper.GetBool("debug") {
-		a.Echo.Debug = true
-	}
-
-	a.Echo.Use(
-		middleware.RequestID(),
-		// TODO: middleware.Logger(),
-		middleware.Recover(),
+// InitApp initialises the Chi router.
+func (a App) InitApp() {
+	// Global middleware
+	a.Chi.Use(
+		middleware.RequestID,
+		middleware.Logger,
+		middleware.Recoverer,
 	)
-
-	a.Echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:3000"},
-	}))
 }
 
 func (a App) InitRoutes() {
 	healthHandler := handlers.NewHealthHandler()
-    websocketHandler := handlers.NewWebSocketHandler()
+	webSocketHandler := handlers.NewWebSocketHandler(WebSocketRepository, SessionRepository, UserRepository)
+	nicknameHandler := handlers.NewNicknameHandler(UserRepository, WebSocketRepository)
 
-	a.Echo.GET("/", healthHandler.Version)
-	a.Echo.GET("/stream", websocketHandler.Connect)
+	a.Chi.Get("/", a.handler(healthHandler.Version))
+	a.Chi.Get("/stream", a.handler(webSocketHandler.Connect))
+
+	a.Chi.Group(func(r chi.Router) {
+		r.Use(a.middleware.TokenMiddleware)
+		r.Post("/nickname", a.handler(nicknameHandler.SetNickname))
+	})
 }
 
-func (a App) EnableMetrics() {
-	p := prometheus.NewPrometheus("echo", nil)
-	p.Use(a.Echo)
+// ---
+
+func (_ App) handler(h func(model.Context)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h(model.NewContext(w, r))
+	}
 }
