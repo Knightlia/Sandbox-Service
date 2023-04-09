@@ -34,3 +34,11 @@ func (u UserRepository) Values() []string {
 	}
 	return v
 }
+
+func (u UserRepository) Get(key string) string {
+	item := u.cache.Get(key)
+	if item != nil {
+		return item.Value()
+	}
+	return ""
+}

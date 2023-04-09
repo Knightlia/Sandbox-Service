@@ -46,6 +46,7 @@ func (a App) InitRoutes() {
 	healthHandler := handlers.NewHealthHandler()
 	webSocketHandler := handlers.NewWebSocketHandler(WebSocketRepository, SessionRepository, UserRepository)
 	nicknameHandler := handlers.NewNicknameHandler(UserRepository, WebSocketRepository)
+	messageHandler := handlers.NewMessageHandler(UserRepository, WebSocketRepository)
 
 	a.Chi.Get("/", a.handler(healthHandler.Version))
 	a.Chi.Get("/stream", a.handler(webSocketHandler.Connect))
@@ -53,6 +54,7 @@ func (a App) InitRoutes() {
 	a.Chi.Group(func(r chi.Router) {
 		r.Use(a.middleware.TokenMiddleware)
 		r.Post("/nickname", a.handler(nicknameHandler.SetNickname))
+		r.Post("/message", a.handler(messageHandler.SendMessage))
 	})
 }
 
