@@ -39,7 +39,7 @@ func (w WebSocketHandler) Connect(c model.Context) {
 	defer w.close(conn)
 
 	// Store session
-	token := generateSecureToken(64)
+	token := generateSecureToken(32)
 	w.sessionRepository.Store(conn, token)
 
 	// Send token payload
