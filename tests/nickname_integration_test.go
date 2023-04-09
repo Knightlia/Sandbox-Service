@@ -29,7 +29,7 @@ func TestNickname401WithInvalidToken(t *testing.T) {
 	headers := DefaultHeaders()
 	headers["token"] = "invalid-token"
 
-	res := POST(s, "/nickname", headers, nil)
+	res := POST(s, "/nickname", headers, nicknameRequest())
 	defer TeardownTests(res.Body)
 
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
