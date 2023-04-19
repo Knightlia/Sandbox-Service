@@ -1,12 +1,10 @@
 package repository
 
 import (
-	"context"
-	"time"
+	"encoding/json"
 
+	"github.com/lesismal/nbio/nbhttp/websocket"
 	"github.com/rs/zerolog/log"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 )
 
 type WebSocketRepository struct {
@@ -17,20 +15,33 @@ func NewWebSocketRepository(sessionRepository SessionRepository) WebSocketReposi
 	return WebSocketRepository{sessionRepository}
 }
 
-func (w WebSocketRepository) SendPayload(ctx context.Context, conn *websocket.Conn, payload interface{}) error {
-	c, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
+func (w WebSocketRepository) SendPayload(conn *websocket.Conn, payload interface{}) error {
+	b, err := json.Marshal(payload)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal websocket message.")
+		return err
+	}
 
-	if err := wsjson.Write(c, conn, payload); err != nil {
+	return w.sendPayload(conn, b)
+}
+
+func (w WebSocketRepository) Broadcast(payload interface{}) {
+	b, err := json.Marshal(payload)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal websocket message.")
+		return
+	}
+
+	for _, conn := range w.sessionRepository.cache.Keys() {
+		_ = w.sendPayload(conn, b)
+	}
+}
+
+func (w WebSocketRepository) sendPayload(conn *websocket.Conn, payload []byte) error {
+	if err := conn.WriteMessage(websocket.BinaryMessage, payload); err != nil {
 		log.Error().Err(err).Msg("Failed to send websocket message.")
 		return err
 	}
 
 	return nil
-}
-
-func (w WebSocketRepository) Broadcast(ctx context.Context, payload interface{}) {
-	for _, conn := range w.sessionRepository.cache.Keys() {
-		_ = w.SendPayload(ctx, conn, payload)
-	}
 }

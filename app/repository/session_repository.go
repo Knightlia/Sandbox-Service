@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/jellydator/ttlcache/v3"
-	"nhooyr.io/websocket"
+	"github.com/lesismal/nbio/nbhttp/websocket"
 )
 
 type SessionRepository struct {

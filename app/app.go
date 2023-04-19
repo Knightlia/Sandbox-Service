@@ -3,13 +3,16 @@ package app
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"sandbox-service/app/handlers"
 	m "sandbox-service/app/middleware"
 	"sandbox-service/app/model"
 	"sandbox-service/app/repository"
 	"sandbox-service/cache"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -39,6 +42,12 @@ func (a App) InitApp() {
 		middleware.RequestID,
 		middleware.Logger,
 		middleware.Recoverer,
+
+		cors.Handler(cors.Options{
+			Debug: viper.GetBool("debug"),
+			AllowedOrigins: viper.GetStringSlice("origins"),
+			AllowedHeaders: []string{"Content-Type", "Token"},
+		}),
 	)
 }
 

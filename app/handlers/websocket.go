@@ -1,15 +1,17 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"net/http"
+	"time"
 
-	"github.com/rs/zerolog/log"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 	"sandbox-service/app/model"
 	"sandbox-service/app/repository"
+
+	"github.com/lesismal/nbio/nbhttp/websocket"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 type WebSocketHandler struct {
@@ -18,7 +20,6 @@ type WebSocketHandler struct {
 	userRepository      repository.UserRepository
 }
 
-// NewWebSocketHandler creates a new instance of the websocket handler.
 func NewWebSocketHandler(
 	webSocketRepository repository.WebSocketRepository,
 	sessionRepository repository.SessionRepository,
@@ -30,67 +31,78 @@ func NewWebSocketHandler(
 // Connect accepts incoming websocket connections from clients. Takes the
 // [model.Context] as the parameter.
 func (w WebSocketHandler) Connect(c model.Context) {
-	// Accept websocket connection
-	conn, err := websocket.Accept(c.Response(), c.Request(), nil)
+	u := websocket.NewUpgrader()
+	u.CheckOrigin = w.checkOrigin
+	u.KeepaliveTime = time.Second * 60
+
+	u.OnOpen(w.onOpen)
+	u.OnMessage(func(conn *websocket.Conn, messageType websocket.MessageType, bytes []byte) {
+		message := string(bytes)
+		if message == "ping" {
+			_ = conn.SetReadDeadline(time.Now().Add(time.Second * 60))
+		}
+	})
+	u.OnClose(w.onClose)
+
+	_, err := u.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to connect to websocket.")
+		log.Error().Err(err).Msg("Failed to upgrade websocket connection.")
 		return
 	}
-	defer w.close(conn)
+}
 
-	// Store session
+func (w WebSocketHandler) checkOrigin(r *http.Request) bool {
+	origins := viper.GetStringSlice("origins")
+	o := r.Header.Get("Origin")
+
+	if o != "" {
+		for _, origin := range origins {
+			if origin == o {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (w WebSocketHandler) onOpen(conn *websocket.Conn) {
+	// Generate and store token
 	token := generateSecureToken(32)
 	w.sessionRepository.Store(conn, token)
 
 	// Send token payload
-	if err := w.sendTokenPayload(c, conn, token); err != nil {
+	if err := w.webSocketRepository.SendPayload(conn, model.TokenPayload{
+		MessageType: "TOKEN_PAYLOAD",
+		Token:       token,
+	}); err != nil {
 		log.Error().Err(err).Msg("Failed to publish token payload.")
-		return
+		_ = conn.Close()
 	}
 
 	// Send user list payload
-	w.sendUserListPayload(c, conn)
-
-	// Loop to keep the connection alive
-	for {
-		var v interface{}
-		_ = wsjson.Read(context.Background(), conn, &v)
+	if err := w.webSocketRepository.SendPayload(conn, model.UserListPayload{
+		MessageType: "USER_LIST_PAYLOAD",
+		UserList:    w.userRepository.Values(),
+	}); err != nil {
+		log.Error().Err(err).Msg("Failed to publish user list payload snapshot.")
+		_ = conn.Close()
 	}
 }
 
-// Attempts to cleanly close a websocket connection and handle any errors.
-func (w WebSocketHandler) close(conn *websocket.Conn) {
-	log.Debug().Msg("Closing websocket connection...")
-	if err := conn.Close(websocket.StatusNormalClosure, ""); err != nil {
-		log.Error().
-			Err(err).
-			Msg("Failed to close websocket connection.")
+func (w WebSocketHandler) onClose(conn *websocket.Conn, err error) {
+	if err != nil {
+		log.Warn().Err(err).Msg("Websocket closed with error.")
 	}
-
+	log.Debug().Msg("Websocket connection closed.")
 	v := w.sessionRepository.Remove(conn)
 	w.userRepository.Remove(v)
-}
 
-// The sendTokenPayload method attempts to publish a [model.TokenPayload] to the
-// client connecting for the first time.
-func (w WebSocketHandler) sendTokenPayload(c model.Context, conn *websocket.Conn, token string) error {
-	err := w.webSocketRepository.SendPayload(c.Request().Context(), conn, model.TokenPayload{
-		MessageType: "TOKEN_PAYLOAD",
-		Token:       token,
-	})
-	return err
-}
-
-// The sendUserListPayload publishes a [model.UserListPayload] which contains a snapshot
-// of all the nicknames.
-func (w WebSocketHandler) sendUserListPayload(c model.Context, conn *websocket.Conn) {
-	_ = w.webSocketRepository.SendPayload(c.Request().Context(), conn, model.UserListPayload{
+	w.webSocketRepository.Broadcast(model.UserListPayload{
 		MessageType: "USER_LIST_PAYLOAD",
 		UserList:    w.userRepository.Values(),
 	})
 }
-
-// ---
 
 // Generates a random alphanumerical string with a specified length.
 func generateSecureToken(length int) string {

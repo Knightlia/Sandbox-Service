@@ -54,12 +54,14 @@ func (_ Config) InitLogger() {
 	}
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if viper.GetBool("debug") {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
 
 	log.Logger = zerolog.New(writers).With().Timestamp().Caller().Logger()
 	log.Info().Msg("Logger initialised.")
+
+	if viper.GetBool("debug") {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		log.Debug().Msg("Logger debug level enabled.")
+	}
 }
 
 // InitConfigFile loads an external configuration file and registers it into [viper].
