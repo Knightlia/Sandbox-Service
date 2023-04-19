@@ -5,11 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
-	"github.com/rs/zerolog/log"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 	"sandbox-service/app/model"
 	"sandbox-service/app/repository"
+
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
+	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wsjson"
 )
 
 type WebSocketHandler struct {
@@ -31,7 +33,9 @@ func NewWebSocketHandler(
 // [model.Context] as the parameter.
 func (w WebSocketHandler) Connect(c model.Context) {
 	// Accept websocket connection
-	conn, err := websocket.Accept(c.Response(), c.Request(), nil)
+	conn, err := websocket.Accept(c.Response(), c.Request(), &websocket.AcceptOptions{
+		OriginPatterns: viper.GetStringSlice("origins.ws"),
+	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to connect to websocket.")
 		return

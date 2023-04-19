@@ -18,7 +18,7 @@ func InitCaches() {
 }
 
 func initSessionCache() {
-	SessionCache = ttlcache.New[*websocket.Conn, string](
+	SessionCache = ttlcache.New(
 		// TODO: Update/remove capacity
 		ttlcache.WithCapacity[*websocket.Conn, string](1000),
 		ttlcache.WithTTL[*websocket.Conn, string](24*time.Hour),
@@ -27,7 +27,7 @@ func initSessionCache() {
 }
 
 func initUserCache() {
-	UserCache = ttlcache.New[string, string](
+	UserCache = ttlcache.New(
 		// TODO: Update/remove capacity
 		ttlcache.WithCapacity[string, string](1000),
 		ttlcache.WithTTL[string, string](24*time.Hour),

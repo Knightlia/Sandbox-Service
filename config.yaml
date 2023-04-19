@@ -1,1 +1,5 @@
-debug: true
+origins:
+  api:
+    - "http://localhost:3000"
+  ws:
+    - "localhost:3000"
