@@ -45,7 +45,7 @@ func (a App) InitApp() {
 
 		cors.Handler(cors.Options{
 			Debug: viper.GetBool("debug"),
-			AllowedOrigins: viper.GetStringSlice("origins"),
+			AllowedOrigins: viper.GetStringSlice("origins.api"),
 			AllowedHeaders: []string{"Content-Type", "Token"},
 		}),
 	)

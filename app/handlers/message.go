@@ -33,7 +33,7 @@ func (m MessageHandler) SendMessage(c model.Context) {
 	}
 
 	// Broadcast message
-	m.webSocketRepository.Broadcast(model.MessagePayload{
+	m.webSocketRepository.Broadcast(c.Request().Context(), model.MessagePayload{
 		MessageType: "MESSAGE_PAYLOAD",
 		Sender:      sender,
 		Message:     messageRequest.Message,

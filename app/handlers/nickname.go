@@ -35,7 +35,7 @@ func (n NicknameHandler) SetNickname(c model.Context) {
 	n.userRepository.Store(c.Request().Header.Get("token"), nicknameRequest.Nickname)
 
 	// Broadcast userList
-	n.webSocketRepository.Broadcast(model.UserListPayload{
+	n.webSocketRepository.Broadcast(c.Request().Context(), model.UserListPayload{
 		MessageType: "USER_LIST_PAYLOAD",
 		UserList:    n.userRepository.Values(),
 	})
