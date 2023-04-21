@@ -7,3 +7,6 @@ test:
 coverage:
 	go test -cover -coverpkg=./... -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
+
+build:
+	GOOS=linux GOARCH=amd64 go build

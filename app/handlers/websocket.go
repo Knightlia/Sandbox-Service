@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 )
 
 type WebSocketHandler struct {
@@ -55,10 +53,9 @@ func (w WebSocketHandler) Connect(c model.Context) {
 	// Send user list payload
 	w.sendUserListPayload(c, conn)
 
-	// Loop to keep the connection alive
 	for {
-		var v interface{}
-		_ = wsjson.Read(context.Background(), conn, &v)
+		// To read ping messages from client
+		_, _, _ = conn.Read(c.Request().Context())
 	}
 }
 
