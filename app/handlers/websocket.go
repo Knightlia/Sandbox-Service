@@ -39,6 +39,7 @@ func (w WebSocketHandler) Connect(c model.Context) {
 		return
 	}
 	defer w.close(conn)
+	log.Debug().Msg("New websocket client connected.")
 
 	// Store session
 	token := generateSecureToken(32)
@@ -55,7 +56,10 @@ func (w WebSocketHandler) Connect(c model.Context) {
 
 	for {
 		// To read ping messages from client
-		_, _, _ = conn.Read(c.Request().Context())
+		_, _, err = conn.Read(c.Request().Context())
+		if err != nil {
+			break
+		}
 	}
 }
 
