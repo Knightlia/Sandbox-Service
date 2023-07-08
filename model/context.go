@@ -7,8 +7,8 @@ import (
 )
 
 type Context struct {
-	w http.ResponseWriter
-	r *http.Request
+	writer  http.ResponseWriter
+	request *http.Request
 }
 
 func NewContext(w http.ResponseWriter, r *http.Request) Context {
@@ -16,19 +16,23 @@ func NewContext(w http.ResponseWriter, r *http.Request) Context {
 }
 
 func (c Context) Response() http.ResponseWriter {
-	return c.w
+	return c.writer
 }
 
 func (c Context) Request() *http.Request {
-	return c.r
+	return c.request
+}
+
+func (c Context) Header(k string) string {
+	return c.request.Header.Get(k)
 }
 
 func (c Context) PlainString(status int, v string) {
-	render.Status(c.r, status)
-	render.PlainText(c.w, c.r, v)
+	render.Status(c.request, status)
+	render.PlainText(c.writer, c.request, v)
 }
 
 func (c Context) JSON(status int, v interface{}) {
-	render.Status(c.r, status)
-	render.JSON(c.w, c.r, v)
+	render.Status(c.request, status)
+	render.JSON(c.writer, c.request, v)
 }

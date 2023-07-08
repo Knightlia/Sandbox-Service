@@ -1,36 +1,42 @@
 package repository
 
 import (
-	"context"
-	"time"
+	"encoding/json"
 
+	"github.com/getsentry/sentry-go"
+	"github.com/olahol/melody"
 	"github.com/rs/zerolog/log"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 )
 
 type WebSocketRepository struct {
-	sessionRepository SessionRepository
+	melody *melody.Melody
 }
 
-func NewWebSocketRepository(sessionRepository SessionRepository) WebSocketRepository {
-	return WebSocketRepository{sessionRepository}
+func NewWebSocketRepository(melody *melody.Melody) WebSocketRepository {
+	return WebSocketRepository{melody}
 }
 
-func (w WebSocketRepository) SendPayload(ctx context.Context, conn *websocket.Conn, payload interface{}) error {
-	c, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
+func (w WebSocketRepository) SendSinglePayload(session *melody.Session, payload interface{}) error {
+	b, _ := json.Marshal(payload)
 
-	if err := wsjson.Write(c, conn, payload); err != nil {
-		log.Error().Err(err).Msg("Failed to send websocket message.")
+	if err := session.Write(b); err != nil {
+		log.Error().
+			Err(err).
+			Msg("Failed to send single websocket payload to session.")
+		sentry.CaptureException(err)
 		return err
 	}
 
 	return nil
 }
 
-func (w WebSocketRepository) Broadcast(ctx context.Context, payload interface{}) {
-	for _, conn := range w.sessionRepository.cache.Keys() {
-		_ = w.SendPayload(ctx, conn, payload)
+func (w WebSocketRepository) Broadcast(payload interface{}) {
+	b, _ := json.Marshal(payload)
+
+	if err := w.melody.Broadcast(b); err != nil {
+		sentry.CaptureException(err)
+		log.Error().
+			Err(err).
+			Msg("Failed to broadcast websocket message.")
 	}
 }

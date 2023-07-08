@@ -2,74 +2,62 @@ package tests
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
-	"time"
 
-	"github.com/jellydator/ttlcache/v3"
+	"github.com/Knightlia/sandbox-service/app"
+	"github.com/olahol/melody"
 	"github.com/stretchr/testify/assert"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
-	"sandbox-service/app"
-	"sandbox-service/cache"
 )
 
-var (
-	testConn  *websocket.Conn
-	testToken string
-)
+var validToken = "valid_token"
 
-func SetupTests() *httptest.Server {
-	cache.InitCaches()
-
-	a := app.NewApp()
-	a.InitApp()
-	a.InitRoutes()
-
-	s := httptest.NewServer(a.Chi)
-
-	// A test user for mock data
-	testConn, testToken = connectTestClient(s)
-	cache.SessionCache.Set(testConn, testToken, ttlcache.DefaultTTL)
-	cache.UserCache.Set(testToken, "existing-nickname", ttlcache.DefaultTTL)
-
-	return s
-}
-
-func TeardownTests(body io.ReadCloser) {
-	_ = body.Close()
-	_ = testConn.Close(websocket.StatusNormalClosure, "")
-}
-
+// GET performs a http GET request on the test server.
 func GET(s *httptest.Server, path string) *http.Response {
 	return doRequest(s.URL+path, http.MethodGet, nil, nil)
 }
 
+// POST performs a http POST request on the test server.
 func POST(s *httptest.Server, path string, headers map[string]string, body interface{}) *http.Response {
 	b, _ := json.Marshal(body)
 	return doRequest(s.URL+path, http.MethodPost, headers, bytes.NewBuffer(b))
 }
 
-func DefaultHeaders() map[string]string {
+// Sets up the test server.
+func setup() (*httptest.Server, app.App) {
+	a := app.NewApp(melody.New())
+	a.InitApp()
+	a.InitRoutes()
+
+	a.UserCache.Store(validToken, "")
+
+	return httptest.NewServer(a.Chi), a
+}
+
+// Cleans up resources from the tests.
+func teardown(body io.ReadCloser) {
+	_ = body.Close()
+}
+
+// Setup default headers with headers.
+func defaultHeaders() map[string]string {
 	return map[string]string{
 		"Content-Type": "application/json",
-		"token":        testToken,
+		"token":        validToken,
 	}
 }
 
-func AssertJSONResponse(t *testing.T, expected interface{}, actual io.ReadCloser) {
+// Assert json response body.
+func assertJSONResponse(t *testing.T, expected interface{}, actual io.ReadCloser) {
 	expectedBytes, _ := json.Marshal(expected)
 	actualBytes, _ := io.ReadAll(actual)
 	assert.JSONEq(t, string(expectedBytes), string(actualBytes))
 }
 
-// ---
-
+// Performs the actual http request and returns the response.
 func doRequest(url string, method string, headers map[string]string, body io.Reader) *http.Response {
 	req, _ := http.NewRequest(method, url, body)
 	for k, v := range headers {
@@ -78,17 +66,4 @@ func doRequest(url string, method string, headers map[string]string, body io.Rea
 
 	res, _ := http.DefaultClient.Do(req)
 	return res
-}
-
-func connectTestClient(s *httptest.Server) (*websocket.Conn, string) {
-	url := strings.Replace(s.URL+"/stream", "http", "ws", 1)
-	c, _, _ := websocket.Dial(context.Background(), url, nil)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	payload := make(map[string]string, 0)
-	_ = wsjson.Read(ctx, c, &payload)
-
-	return c, payload["t"]
 }

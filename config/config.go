@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -20,10 +21,14 @@ func NewConfig() Config {
 
 // InitFlags initialise CLI flags.
 func (_ Config) InitFlags() {
+	pflag.Bool("version", false, "Display application version.")
+	pflag.Bool("v", false, "Display application version.")
+
 	pflag.Uint("port", 8080, "The port to run the server on. Default is 8080.")
 	pflag.String("config", ".", "The directory where the config.yaml exists. Defaults to current working directory.")
 	pflag.Bool("debug", false, "Enable debug for development. False by default.")
 	pflag.String("logs", "logs", "Directory for the logs. In 'logs' folder at the current working directory by default.")
+
 	pflag.Parse()
 	_ = viper.BindPFlags(pflag.CommandLine)
 }
@@ -34,8 +39,8 @@ func (_ Config) InitLogger() {
 		zerolog.ConsoleWriter{Out: os.Stdout},
 		&lumberjack.Logger{
 			Filename:   viper.GetString("logs") + "/sandbox.log",
-			MaxSize:    100,
-			MaxAge:     10,
+			MaxSize:    50,
+			MaxAge:     5,
 			MaxBackups: 3,
 			Compress:   true,
 		},
@@ -78,6 +83,9 @@ func (_ Config) InitConfigFile() {
 			Err(err).
 			Msg("Error reading configuration file.")
 	}
+
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	log.Info().Msg("Configuration file loaded.")
 }

@@ -1,5 +1,11 @@
+COMMIT := $(shell git rev-parse HEAD)
+VERSION := $(shell git describe --tags $(COMMIT) 2> /dev/null || echo $(COMMIT))
+COMMIT := $(shell git rev-parse HEAD)
+BUILD_TIME := $(shell date +%FT%T%z)
+LD_FLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildTime=$(BUILD_TIME)
+
 run:
-	go run main.go --debug=true
+	go run -ldflags="$(LD_FLAGS)" main.go
 
 test:
 	go test ./...
@@ -9,4 +15,7 @@ coverage:
 	go tool cover -html=coverage.out
 
 build:
-	GOOS=linux GOARCH=amd64 go build
+	go build -ldflags="$(LD_FLAGS)"
+
+build-linux:
+	GOOS=linux GOARCH=amd64 go build -ldflags="$(LD_FLAGS)"

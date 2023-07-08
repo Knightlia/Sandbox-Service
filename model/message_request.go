@@ -14,8 +14,10 @@ func (m MessageRequest) Bind(_ *http.Request) error {
 	if len(m.Message) == 0 {
 		return errors.New("error.message.required")
 	}
+
 	if m.Timestamp <= 0 {
 		return errors.New("error.timestamp.invalid")
 	}
+
 	return nil
 }

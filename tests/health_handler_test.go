@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHealthVersion(t *testing.T) {
-	s := SetupTests()
+func TestHealthHandler_GetVersion_200(t *testing.T) {
+	s, _ := setup()
 	defer s.Close()
 
 	res := GET(s, "/")
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 
-	_ = res.Body.Close()
+	teardown(res.Body)
 }
