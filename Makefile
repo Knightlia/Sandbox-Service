@@ -5,7 +5,7 @@ BUILD_TIME := $(shell date +%FT%T%z)
 LD_FLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildTime=$(BUILD_TIME)
 
 run:
-	go run -ldflags="$(LD_FLAGS)" main.go
+	go run -ldflags="$(LD_FLAGS)" main.go --debug
 
 test:
 	go test ./...
