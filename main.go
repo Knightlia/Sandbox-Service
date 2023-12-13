@@ -23,7 +23,9 @@ var (
 )
 
 func main() {
-	initConfiguration()
+	if (initConfiguration()) {
+		return
+	}
 
 	// Initialise [melody] for websockets.
 	m := melody.New()
@@ -91,7 +93,7 @@ func main() {
 }
 
 // Initialises application CLI flags and loads configurations.
-func initConfiguration() {
+func initConfiguration() bool {
 	c := config.NewConfig()
 	c.InitFlags()
 
@@ -100,7 +102,7 @@ func initConfiguration() {
 		fmt.Printf("Version:     %s\n", version)
 		fmt.Printf("Commit:      %s\n", commit)
 		fmt.Printf("Build Time:  %s\n", buildTime)
-		return
+		return true
 	}
 
 	viper.Set("version", version)
@@ -114,4 +116,6 @@ func initConfiguration() {
 		log.Debug().Msgf("%s: %s", v, viper.Get(v))
 	}
 	fmt.Println()
+
+	return false
 }
