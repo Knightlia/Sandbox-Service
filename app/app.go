@@ -1,75 +1,39 @@
 package app
 
 import (
-	"net/http"
-
 	"github.com/Knightlia/sandbox-service/app/handlers"
-	"github.com/Knightlia/sandbox-service/app/repository"
-	"github.com/Knightlia/sandbox-service/cache"
-	"github.com/Knightlia/sandbox-service/model"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"github.com/olahol/melody"
-	"github.com/spf13/viper"
+	"github.com/rs/zerolog/log"
 )
 
 type App struct {
-	Chi    *chi.Mux
-	Melody *melody.Melody
-
-	UserCache cache.UserCache
-
-	WebSocketRepository repository.WebSocketRepository
+	melody *melody.Melody
 }
 
-func NewApp(melody *melody.Melody) App {
-	return App{
-		Chi:    chi.NewRouter(),
-		Melody: melody,
-
-		UserCache: cache.NewUserCache(),
-
-		WebSocketRepository: repository.NewWebSocketRepository(melody),
-	}
+func NewApp(m *melody.Melody) App {
+	return App{m}
 }
 
-// InitApp initialises the Chi router.
-func (a App) InitApp() {
-	// Global middleware
-	a.Chi.Use(
+func (_ App) Init() *chi.Mux {
+	r := chi.NewRouter()
+
+	r.Use(
 		middleware.RequestID,
-		// TODO: Logger with zerolog?
+		middleware.Logger,
 		middleware.Recoverer,
-
-		cors.Handler(cors.Options{
-			Debug:          viper.GetBool("debug"),
-			AllowedOrigins: viper.GetStringSlice("cors"),
-			AllowedHeaders: []string{"Content-Type", "token"},
-		}),
 	)
+
+	return r
 }
 
-// InitRoutes initialises the handlers and the endpoints.
-func (a App) InitRoutes() {
+func (a App) Routes(r *chi.Mux) {
 	healthHandler := handlers.NewHealthHandler()
-	webSocketHandler := handlers.NewWebSocketHandler(a.Melody, a.UserCache, a.WebSocketRepository)
-	nicknameHandler := handlers.NewNicknameHandler(a.UserCache, a.WebSocketRepository)
-	messageHandler := handlers.NewMessageHandler(a.UserCache, a.WebSocketRepository)
+	webSocketHandler := handlers.NewWebSocketHandler(a.melody)
 
-	a.Chi.Get("/", a.handler(healthHandler.GetVersion))
-	a.Chi.Get("/stream", a.handler(webSocketHandler.Connect))
+	r.Get("/", healthHandler.GetVersion)
+	r.Get("/stream", webSocketHandler.Connect)
 
-	a.Chi.Group(func(r chi.Router) {
-		r.Use(a.TokenMiddleware)
-		r.Post("/nickname", a.handler(nicknameHandler.SetNickname))
-		r.Post("/message", a.handler(messageHandler.SendMessage))
-	})
-}
-
-// Wraps standard http handlers with [model.Context] used by handlers.
-func (_ App) handler(h func(model.Context)) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		h(model.NewContext(w, r))
-	}
+	log.Info().Msgf("%d routes initialised.", len(r.Routes()))
 }

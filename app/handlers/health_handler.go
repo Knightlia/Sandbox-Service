@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/Knightlia/sandbox-service/model"
+	"github.com/go-chi/render"
 	"github.com/spf13/viper"
 )
 
@@ -13,6 +13,6 @@ func NewHealthHandler() HealthHandler {
 	return HealthHandler{}
 }
 
-func (_ HealthHandler) GetVersion(c model.Context) {
-	c.PlainString(http.StatusOK, viper.GetString("version"))
+func (_ HealthHandler) GetVersion(w http.ResponseWriter, r *http.Request) {
+	render.PlainText(w, r, viper.GetString("version"))
 }
